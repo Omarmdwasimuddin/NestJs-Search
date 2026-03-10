@@ -229,3 +229,207 @@ export class ProductController {
 ![](/public/Img/query0.png)
 ![](/public/Img/query01.png)
 ![](/public/Img/query.png)
+
+## Partial searching with Like, ILike
+
+ILike সাধারণত ব্যবহার করা হয় database query করার সময় (বিশেষ করে PostgreSQL + TypeORM এ)।
+এটা case-insensitive partial search দেয়। যেমন Arman লিখলে arman ali ও match করবে।
+
+NestJS এ ILike ব্যবহার করতে হলে কিছু setup দরকার।
+
+---
+
+#### প্রয়োজনীয় package install
+
+যদি তুমি TypeORM + PostgreSQL ব্যবহার করো তাহলে install করতে হবে:
+
+```bash
+npm install @nestjs/typeorm typeorm pg
+```
+
+Explanation:
+
+- @nestjs/typeorm → NestJS এর সাথে TypeORM connect করার জন্য
+- typeorm → ORM library
+- pg → PostgreSQL driver
+
+---
+
+#### Database Module Setup
+
+`app.module.ts`
+
+```ts
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: 'postgres',
+      password: '1234',
+      database: 'product_db',
+      autoLoadEntities: true,
+      synchronize: true,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+---
+
+#### Entity Create
+
+`product.entity.ts`
+
+```ts
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+@Entity()
+export class Product {
+
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  name: string;
+
+  @Column()
+  brand: string;
+
+  @Column()
+  category: string;
+
+  @Column()
+  price: number;
+
+}
+```
+
+---
+
+#### Module এ Entity Import
+
+`product.module.ts`
+
+```ts
+@Module({
+  imports: [TypeOrmModule.forFeature([Product])],
+  controllers: [ProductController],
+  providers: [ProductService],
+})
+export class ProductModule {}
+```
+
+---
+
+#### Service এ Repository Inject
+
+```ts
+import { Repository, ILike } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+
+@Injectable()
+export class ProductService {
+
+  constructor(
+    @InjectRepository(Product)
+    private productRepo: Repository<Product>,
+  ) {}
+```
+
+---
+
+#### ILike দিয়ে Partial Search
+
+```ts
+getProductByName(name: string) {
+  return this.productRepo.find({
+    where: {
+      name: ILike(`%${name}%`)
+    }
+  });
+}
+```
+
+Explanation:
+
+%${name}%
+
+মানে
+
+%arman%
+
+SQL Query হবে:
+
+```
+SELECT * FROM product
+WHERE name ILIKE '%arman%'
+```
+
+Result:
+
+| name           |
+| -------------- |
+| Arman          |
+| Arman Ali      |
+| Mohammad Arman |
+
+সবই match করবে।
+
+---
+
+##### Brand Search
+
+```ts
+getProductByBrand(brand: string) {
+  return this.productRepo.find({
+    where: {
+      brand: ILike(`%${brand}%`)
+    }
+  });
+}
+```
+
+---
+
+##### API Example
+
+```
+http://localhost:3000/products/search?name=arman
+```
+
+Result:
+
+```
+Arman
+Arman Ali
+```
+
+---
+
+#### Important
+
+তুমি যেহেতু আগে Prisma ব্যবহার করো (তোমার projects এ), Prisma তে ILike নেই।
+Prisma তে partial search হয়:
+
+```
+contains
+mode: 'insensitive'
+```
+
+Example:
+
+```ts
+where: {
+  name: {
+    contains: "arman",
+    mode: "insensitive"
+  }
+}
+```
+
+---
