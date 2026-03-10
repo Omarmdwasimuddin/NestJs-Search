@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 
@@ -16,33 +16,17 @@ export class ProductController {
         return this.productService.addProduct(createProductDto);
     }
 
-    @Get(':id')
-    getProductById(@Param('id') id: string){
-        return this.productService.getProductById(Number(id));
-    }
-
-    // @Get(':name')
-    // getProductByName(@Param('name') name: string){
-    //     return this.productService.getProductByName(name);
-    // }
-
-    @Get('name/:name')
-    getProductByName(@Param('name') name: string){
-        return this.productService.getProductByName(name);
-    } 
-
-    // @Get(':brand')
-    // getProductByBrand(@Param('brand') brand: string){
-    //     return this.productService.getProductByBrand(brand);
-    // }
-
-    @Get('brand/:brand')
-    getProductByBrand(@Param('brand') brand: string){
-        return this.productService.getProductByBrand(brand);
-    }
-
-    @Get('category/:category')
-    getProductByCategory(@Param('category') category: string){
-        return this.productService.getProductByCategory(category);
+    @Get('search')
+    searchProduct(
+        @Query('id') id?: string,
+        @Query('name') name?: string,
+        @Query('brand') brand?: string,
+        @Query('category') category?: string,
+    ){
+        if(id) return this.productService.getProductById(Number(id));
+        if(name) return this.productService.getProductByName(name);
+        if(brand) return this.productService.getProductByBrand(brand);
+        if(category) return this.productService.getProductByCategory(category);
+        return this.productService.getAllProducts();
     }
 }
